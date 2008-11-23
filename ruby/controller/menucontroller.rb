@@ -347,7 +347,7 @@ class MenuController < NSObject
       sel = @world.selected
       if sel && !sel.unit?
         if sel.channel? && sel.active?
-          return unless NSRunAlertPanel('LimeChat', %|Really leave #{sel.name}?|, 'Leave', 'Cancel', nil) == NSAlertDefaultReturn
+          return unless NSRunAlertPanel(%|Really leave #{sel.name}?|, '', 'Leave', 'Cancel', nil) == NSAlertDefaultReturn
         end
         @world.destroy_channel(sel)
         @world.save
