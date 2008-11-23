@@ -1,3 +1,7 @@
+2008-11-23  Henrik Nyh <henrik@nyh.se>
+
+    Language and conventions in leave/quit dialogs.
+
 2008-11-18  Satoshi Nakagawa <psychs@limechat.net>
 
     Fixed a memory leak when enabling SSL.
