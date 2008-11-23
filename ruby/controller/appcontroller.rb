@@ -556,18 +556,13 @@ class AppController < NSObject
     rec = @dcc.count_receiving_items
     send = @dcc.count_sending_items
     if rec > 0 || send > 0
-      msg = "Now you are "
-      if rec > 0
-        msg << "receiving #{rec} files"
-      end
-      if send > 0
-        msg << " and " if rec > 0
-        msg << "sending #{send} files"
-      end
-      msg << ".\nAre you sure to quit?"
-      NSRunCriticalAlertPanel('LimeChat', msg, 'Anyway Quit', 'Cancel', nil) == NSAlertDefaultReturn
+      receiving = rec  > 0 ? "receiving #{rec} file#{'s' if rec>1}" : nil
+      sending   = send > 0 ? "sending #{send} file#{'s' if send>1}" : nil
+      transfers = [receiving, sending].compact.join(' and ')
+      msg = "You are currently #{transfers}. Transfers will be aborted if you quit."
+      NSRunCriticalAlertPanel('Are you sure you want to quit?', msg, 'Quit Anyway', 'Cancel', nil) == NSAlertDefaultReturn
     elsif preferences.general.confirm_quit
-      NSRunCriticalAlertPanel('LimeChat', 'Are you sure to quit?', 'Quit', 'Cancel', nil) == NSAlertDefaultReturn
+      NSRunCriticalAlertPanel('Are you sure you want to quit?', '', 'Quit', 'Cancel', nil) == NSAlertDefaultReturn
     else
       true
     end
