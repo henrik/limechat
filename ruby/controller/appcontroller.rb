@@ -562,7 +562,7 @@ class AppController < NSObject
       msg = "You are currently #{transfers}. Transfers will be aborted if you quit."
       NSRunCriticalAlertPanel('Are you sure you want to quit?', msg, 'Quit Anyway', 'Cancel', nil) == NSAlertDefaultReturn
     elsif preferences.general.confirm_quit
-      NSRunCriticalAlertPanel('Are you sure you want to quit?', '', 'Quit', 'Cancel', nil) == NSAlertDefaultReturn
+      NSRunAlertPanel('Are you sure you want to quit?', '', 'Quit', 'Cancel', nil) == NSAlertDefaultReturn
     else
       true
     end
