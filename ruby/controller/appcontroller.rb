@@ -162,7 +162,7 @@ class AppController < NSObject
     @tree.setNeedsDisplay(true)
   end
 
-  def applicationDidReceivedHotKey(sender)
+  def applicationDidReceiveHotKey(sender)
     if !@window.isVisible || !NSApp.isActive
       NSApp.activateIgnoringOtherApps(true)
       @window.makeKeyAndOrderFront(nil)
@@ -216,7 +216,7 @@ class AppController < NSObject
     s = s.to_s
     sel = @world.selected
     if sel && !sel.unit? && /(\r\n|\r|\n)[^\r\n]/ =~ s
-      @menu.start_paste_dialog(sel.unit.mynick, sel.unit.id, sel.id, s)
+      @menu.start_paste_dialog(sel.unit.mynick, sel.unit.uid, sel.uid, s)
       true
     else
       false
