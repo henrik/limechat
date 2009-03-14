@@ -1569,16 +1569,27 @@ static void MyCFWriteStreamCallback (CFWriteStreamRef stream, CFStreamEventType 
 
 - (void)useSSL
 {
-  CFReadStreamSetProperty(theReadStream, kCFStreamPropertySocketSecurityLevel, kCFStreamSocketSecurityLevelNegotiatedSSL);
-  CFWriteStreamSetProperty(theWriteStream, kCFStreamPropertySocketSecurityLevel, kCFStreamSocketSecurityLevelNegotiatedSSL);
+	NSDictionary* settings = [NSDictionary dictionaryWithObjectsAndKeys:
+								   (NSString *)kCFStreamSocketSecurityLevelNegotiatedSSL, kCFStreamSSLLevel,
+								   kCFBooleanTrue, kCFStreamSSLAllowsAnyRoot,
+								   kCFBooleanFalse, kCFStreamSSLValidatesCertificateChain,
+								   kCFNull, kCFStreamSSLPeerName,
+								   kCFBooleanFalse, kCFStreamSSLIsServer,
+								   nil];
+	
+	CFReadStreamSetProperty(theReadStream, kCFStreamPropertySSLSettings, settings);
+	CFWriteStreamSetProperty(theWriteStream, kCFStreamPropertySSLSettings, settings);
+}
 
-  NSMutableDictionary* settings = [[NSMutableDictionary allocWithZone:nil] init];
-  [settings setObject:[NSNumber numberWithBool:YES] forKey:(NSString *)kCFStreamSSLAllowsAnyRoot];
-
-  CFReadStreamSetProperty(theReadStream, kCFStreamPropertySSLSettings, (CFDictionaryRef)settings);
-  CFWriteStreamSetProperty(theWriteStream, kCFStreamPropertySSLSettings, (CFDictionaryRef)settings);
-
-  [settings release];
++ (NSString*)posixErrorStringFromErrno:(int)code
+{
+  const char* error = strerror(code);
+  if (error) {
+    return [NSString stringWithCString:error];
+  }
+  else {
+    return nil;
+  }
 }
 
 @end

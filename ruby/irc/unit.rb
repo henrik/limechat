@@ -48,6 +48,8 @@ class IRCUnit < NSObject
   def setup(seed)
     @config = seed.dup
     @config.channels = nil
+    migrate
+    
     @address_detection_method = preferences.dcc.address_detection_method
     case @address_detection_method
     when Preferences::Dcc::ADDR_DETECT_NIC
@@ -55,6 +57,11 @@ class IRCUnit < NSObject
     when Preferences::Dcc::ADDR_DETECT_SPECIFY
       Resolver.resolve(self, preferences.dcc.myaddress)
     end
+  end
+  
+  def migrate
+    # migrate irc.friend.td.nu to irc.friend-chat.jp
+    @config.host = @config.host.gsub(/^irc.friend.td.nu/, 'irc.friend-chat.jp')
   end
   
   def update_config(seed)
@@ -479,8 +486,16 @@ class IRCUnit < NSObject
     
     # get target if needed
     case cmd
-    when :privmsg,:notice,:action,:invite
-      target = s.token!
+    when :privmsg,:notice,:action
+      if opmsg
+        if sel && sel.channel? && !s.channelname?
+          target = sel.name
+        else
+          target = s.token!
+        end
+      else
+        target = s.token!
+      end
     when :me
       cmd = :action
       if sel
@@ -515,6 +530,8 @@ class IRCUnit < NSObject
         target = s.token!
         target = '#' + target unless target.channelname?
       end
+    when :invite
+      target = s.token!
     when :op,:deop,:halfop,:dehalfop,:voice,:devoice,:ban,:unban
       if sel && sel.channel? && !s.modechannelname?
         target = sel.name
@@ -529,7 +546,15 @@ class IRCUnit < NSObject
         sign = '+'
       end
       params = s.split(/ +/)
-      s = sign + command[0,1] * params.size + ' ' + s
+      if params.empty?
+        if cmd == :ban
+          s = '+b'
+        else
+          return true
+        end
+      else
+        s = sign + command[0,1] * params.size + ' ' + s
+      end
       cmd = :mode
     when :umode
       cmd = :mode
@@ -937,7 +962,7 @@ class IRCUnit < NSObject
     mymode += 8 if @config.invisible
     send(:pass, @config.password) if @config.password && !@config.password.empty?
     send(:nick, @sentnick)
-    send(:user, @config.username, mymode.to_s, '*' ,@config.realname)
+    send(:user, @config.username, mymode.to_s, '*', ":#{@config.realname}")
     update_unit_title
   end
   
@@ -986,7 +1011,7 @@ class IRCUnit < NSObject
   end
   
   def ircsocket_on_error(err)
-    print_error(err.localizedDescription.to_s)
+    print_error(err)
   end
   
   def ResolverOnResolve(addr)
@@ -1578,9 +1603,16 @@ class IRCUnit < NSObject
       c.add_member(User.new(nick, m.sender_username, m.sender_address, false, false, njoin))
       update_channel_title(c)
     end
-    print_both(c || chname, :join, "#{nick} has joined (#{m.sender_username}@#{m.sender_address})")
-    
+    if preferences.general.show_join_leave
+      print_both(c || chname, :join, "#{nick} has joined (#{m.sender_username}@#{m.sender_address})")
+    end
     check_autoop(c, m.sender_nick, m.sender) unless myself
+    
+    # add member to talk
+    c = find_channel(nick)
+    if c
+      c.add_member(User.new(nick, m.sender_username, m.sender_address))
+    end
   end
   
   def receive_part(m)
@@ -1600,7 +1632,9 @@ class IRCUnit < NSObject
       update_channel_title(c)
       check_rejoin(c) unless myself
     end
-    print_both(c || chname, :part, "#{nick} has left (#{comment})")
+    if preferences.general.show_join_leave
+      print_both(c || chname, :part, "#{nick} has left (#{comment})")
+    end
     print_system(c, "You have left the channel") if myself
   end
   
@@ -1637,13 +1671,17 @@ class IRCUnit < NSObject
     
     @channels.each do |c|
       if c.find_member(nick)
-        print_channel(c, :quit, "#{nick} has left IRC (#{comment})")
+        if preferences.general.show_join_leave
+          print_channel(c, :quit, "#{nick} has left IRC (#{comment})")
+        end
         c.remove_member(nick)
         update_channel_title(c)
         check_rejoin(c)
       end
     end
-    print_console(nil, :quit, "#{nick} has left IRC (#{comment})")
+    if preferences.general.show_join_leave
+      print_console(nil, :quit, "#{nick} has left IRC (#{comment})")
+    end
   end
   
   def receive_kill(m)
@@ -2186,18 +2224,21 @@ class IRCUnit < NSObject
         print_unknown_reply(m)
       end
     when 322	# RPL_LIST
-      unless @in_list
-        @in_list = true
-        @list_dialog.clear if @list_dialog
-      end
       chname = m[1]
       count = m[2]
       topic = m.sequence(3)
-      unless @list_dialog
-        create_channel_list_dialog
+      unless @in_list
+        @in_list = true
+        if @list_dialog
+          @list_dialog.clear
+        else
+          create_channel_list_dialog
+        end
       end
       if @list_dialog
         @list_dialog.add_item([chname, count.to_i, topic])
+      else
+        print_both(nil, :reply, "#{chname} (#{count}) #{topic}")
       end
     when 323	# RPL_LISTEND
       @in_list = false
